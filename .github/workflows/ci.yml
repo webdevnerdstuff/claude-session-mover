@@ -1,0 +1,54 @@
+name: CI
+
+# The manifest checks, the engine tests and the helper's tests, against the Claude Code the plugin
+# is tested on and, as an early warning, the latest build. Nothing here talks to the model or needs
+# a secret, and nothing touches a real Claude install: the helper is tested on temporary files.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (claude ${{ matrix.claude }})
+    runs-on: ubuntu-latest
+    # The latest build may change the mod API before session-mover catches up: it reports, it does not block.
+    continue-on-error: ${{ matrix.claude == 'latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        claude: ['2.1.287', latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Newer packages fetch a native binary in a postinstall step; run it again when it did not
+      # take, as the package's own error message says to.
+      - name: Install Claude Code
+        run: |
+          npm install -g @anthropic-ai/claude-code@${{ matrix.claude }}
+          claude --version || node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs"
+          claude --version
+
+      - name: Validate the marketplace and plugin manifests
+        run: claude plugin validate .
+
+      - name: Engine tests
+        run: claude plugin test .
+
+      - name: Helper tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'

@@ -1,0 +1,15 @@
+{
+	"name": "claude-session-mover",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Development scripts for the session-mover Claude Code plugin.",
+	"license": "MIT",
+	"author": "WebDevNerdStuff & Bunnies... lots and lots of bunnies! <webdevnerdstuff@gmail.com> (https://webdevnerdstuff.com)",
+	"repository": "github:webdevnerdstuff/claude-session-mover",
+	"scripts": {
+		"test": "claude plugin test .",
+		"test:helper": "python3 -m unittest discover -s tests -p 'test_*.py'",
+		"validate": "claude plugin validate .",
+		"check": "pnpm validate && pnpm test && pnpm test:helper"
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"name": "session-mover",
+	"version": "0.1.0",
+	"description": "Move Claude desktop Code sessions between sidebar workspaces from a pane. /move-sessions opens it.",
+	"author": {
+		"name": "WebDevNerdStuff & Bunnies... lots and lots of bunnies!",
+		"email": "webdevnerdstuff@gmail.com",
+		"url": "https://webdevnerdstuff.com"
+	},
+	"homepage": "https://github.com/webdevnerdstuff/claude-session-mover",
+	"repository": "https://github.com/webdevnerdstuff/claude-session-mover",
+	"license": "MIT",
+	"keywords": [
+		"claude-code-mods",
+		"claude-mods",
+		"function-hooks",
+		"claude-desktop",
+		"sessions",
+		"workspaces"
+	],
+	"types": "./types/index.d.ts"
+}
