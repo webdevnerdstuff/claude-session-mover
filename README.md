@@ -1,4 +1,9 @@
-# session-mover
+<h1 align="center">
+	<picture>
+		<source media="(prefers-color-scheme: dark)" srcset="docs/brand/banner-dark.svg">
+		<img alt="session-mover" src="docs/brand/banner-light.svg" width="720">
+	</picture>
+</h1>
 
 Move sessions between workspaces in the Claude desktop app's Code tab. The app has no way to change a session's workspace once it is made: session-mover adds a pane where you pick the new workspace for each session, then quits Claude, moves them, and reopens it.
 
