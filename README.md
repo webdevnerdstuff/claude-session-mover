@@ -7,6 +7,12 @@
 
 Move sessions between workspaces in the Claude desktop app's Code tab. The app has no way to change a session's workspace once it is made: session-mover adds a pane where you pick the new workspace for each session, then quits Claude, moves them, and reopens it.
 
+## Why use it
+
+> [!TIP]
+> **Moving sessions uses zero tokens.** Asking Claude to move a session for you can take a lot of back and forth, and every round of it spends tokens you could use on real work. session-mover takes that out of the equation: it runs locally, never calls the model, and moves your sessions in a few clicks.
+
+- **Uses no tokens**: everything runs on your Mac, never through Claude
 - Lists your sessions by workspace, with a **Move to** picker on each
 - Queue several moves, undo any of them, then apply them all at once
 - Moves the session's folder, its sidebar workspace and its conversation history together
