@@ -6,8 +6,14 @@ import type { Listing, SessionRow } from '../types'
 const PANE = 'session-mover'
 const COMMAND = 'move-sessions'
 const NONE = '__none'
-// Rows drawn under "All workspaces"; one workspace draws all of its own.
-const ALL_LIMIT = 60
+// One drawing holds 100,000 serialized characters; past it the desktop keeps
+// the last drawing, whose buttons no longer answer. Each row carries its own
+// copy of the workspace options, so the rows on a page share this budget.
+const ROWS_BUDGET = 60_000
+// A row's characters besides its options: title, keys, handler handles.
+const ROW_BASE = 600
+const MIN_ROWS = 5
+const MAX_ROWS = 60
 
 const listing = atom({ plugin: 'session-mover', key: 'listing' } as const, null, {
 	shape: 'listing-1',
@@ -16,6 +22,7 @@ const queue = atom({ plugin: 'session-mover', key: 'queue' } as const, {}, {
 	shape: 'queue-1',
 })
 const filter = atom({ plugin: 'session-mover', key: 'filter' } as const, 'all')
+const page = atom({ plugin: 'session-mover', key: 'page' } as const, 0)
 const isConfirming = atom({ plugin: 'session-mover', key: 'isConfirming' } as const, false)
 const message = atom({ plugin: 'session-mover', key: 'message' } as const, '')
 
@@ -107,6 +114,7 @@ export const register: Register = on => {
 		const data = await read($, listing)
 		const queued = await read($, queue)
 		const shown = await read($, filter)
+		const wanted = await read($, page)
 		const confirming = await read($, isConfirming)
 		const note = await read($, message)
 
@@ -132,10 +140,13 @@ export const register: Register = on => {
 			...data.workspaces.map(w => ({ value: w.id, label: w.name })),
 			{ value: NONE, label: 'No workspace' },
 		]
-		const rows =
-			shown === 'all'
-				? data.sessions.slice(0, ALL_LIMIT)
-				: data.sessions.filter(row => where(row) === shown)
+		const list = shown === 'all' ? data.sessions : data.sessions.filter(row => where(row) === shown)
+		const rowCost = JSON.stringify(moveOptions).length + ROW_BASE
+		const perPage = Math.max(MIN_ROWS, Math.min(MAX_ROWS, Math.floor(ROWS_BUDGET / rowCost)))
+		const pages = Math.max(1, Math.ceil(list.length / perPage))
+		const current = Math.min(Math.max(wanted, 0), pages - 1)
+		const rows = list.slice(current * perPage, (current + 1) * perPage)
+		const turn = (to: number) => update($, page, () => to)
 		const byId = new Map(data.sessions.map(row => [row.id, row]))
 		const pending = Object.entries(queued).filter(([id]) => byId.has(id))
 
@@ -157,7 +168,10 @@ export const register: Register = on => {
 						label="Show"
 						options={filterOptions}
 						value={shown}
-						onSelect={value => void update($, filter, () => value)}
+						onSelect={value => {
+							void update($, filter, () => value)
+							void turn(0)
+						}}
 					/>
 					<Button key="refresh" label="Reload" onPress={() => void load($)} />
 				</Box>
@@ -183,11 +197,19 @@ export const register: Register = on => {
 							/>
 						</Box>
 					))}
-					{shown === 'all' && data.sessions.length > ALL_LIMIT && (
-						<Text dimColor>
-							Showing the {ALL_LIMIT} most recent. Pick a workspace above to see all of its
-							sessions.
-						</Text>
+					{pages > 1 && (
+						<Box flexDirection="row" gap={1}>
+							{current > 0 && (
+								<Button key="prev-page" label="Previous" onPress={() => void turn(current - 1)} />
+							)}
+							<Text dimColor>
+								Page {current + 1} of {pages} · {current * perPage + 1}–
+								{current * perPage + rows.length} of {list.length}
+							</Text>
+							{current < pages - 1 && (
+								<Button key="next-page" label="Next" onPress={() => void turn(current + 1)} />
+							)}
+						</Box>
 					)}
 				</Box>
 

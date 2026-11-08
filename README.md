@@ -55,7 +55,7 @@ claude plugin uninstall session-mover@claude-session-mover
 ## Use
 
 1. Run `/move-sessions` in any Code session. The **Move sessions** pane opens.
-2. Pick a workspace under **Show**, or keep **All workspaces** for your 60 most recent sessions.
+2. Pick a workspace under **Show**, or keep **All workspaces** for every session, newest first. A long list is split into pages; use **Previous** and **Next** to move between them.
 3. Set **Move to** on each session you want to move. The moves wait under **Queued moves**, each with **Undo**.
 4. Click **Apply & restart Claude**, then **Quit and move**.
 

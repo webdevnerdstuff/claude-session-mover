@@ -1,6 +1,6 @@
 {
 	"name": "session-mover",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Move Claude desktop Code sessions between sidebar workspaces from a pane. /move-sessions opens it.",
 	"author": {
 		"name": "WebDevNerdStuff & Bunnies... lots and lots of bunnies!",
