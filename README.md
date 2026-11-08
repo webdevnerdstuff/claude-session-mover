@@ -55,6 +55,9 @@ claude plugin uninstall session-mover@claude-session-mover
 ## Use
 
 1. Run `/move-sessions` in any Code session. The **Move sessions** pane opens.
+
+   **In a terminal**, the pane docks beside the chat only in Claude Code's fullscreen renderer: run `/tui fullscreen` once to turn it on for every session. Without it, the pane opens above the prompt, where <kbd>↑</kbd> and <kbd>↓</kbd> scroll a long list and <kbd>Tab</kbd> moves between controls. If the keys go back to the prompt, press <kbd>Ctrl</kbd>+<kbd>X</kbd> <kbd>Tab</kbd> (twice if a mod puts a bar above the prompt) or run `/move-sessions` again.
+
 2. Pick a workspace under **Show**, or keep **All workspaces** for every session, newest first. A long list is split into pages; use **Previous** and **Next** to move between them.
 3. Set **Move to** on each session you want to move. The moves wait under **Queued moves**, each with **Undo**.
 4. Click **Apply & restart Claude**, then **Quit and move**.
