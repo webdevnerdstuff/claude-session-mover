@@ -19,6 +19,8 @@ declare module 'claude-code' {
 			queue: Shaped<Record<string, string>>
 			// The workspace the pane shows, or 'all'.
 			filter: string
+			// The page of the shown list, from 0; clamped when drawn.
+			page: number
 			isConfirming: boolean
 			message: string
 		}

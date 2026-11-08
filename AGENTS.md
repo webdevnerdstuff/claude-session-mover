@@ -50,6 +50,7 @@ Both are only safe to write while the app is quit (it holds LevelDB open and wri
 - **Only change entries the map already has.** A new key would change the value's size, which the app keeps beside it in the origin's `META` entry. A session not in the map is moved by its file alone.
 - **Copy the conversation, never move it**: the session's `<cliSessionId>.jsonl` and folder from the old folder's project under `~/.claude/projects/` to the new one's (`/` and every other non-alphanumeric character become `-`), leaving the original.
 - **The pane has no `Select` on mobile.** It draws a note there instead.
+- **Keep one drawing under 100,000 serialized characters.** Past it the desktop keeps the old drawing and its buttons stop answering (`ui_press not handled` in `~/Library/Logs/Claude/claude.ai-web.log`). Every row repeats the workspace options, so the session list is paged to `ROWS_BUDGET`.
 
 ## Rules the mod loader enforces
 
