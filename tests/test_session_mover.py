@@ -4,6 +4,16 @@ import json, os, struct, sys, tempfile, unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bin"))
 import session_mover as m  # noqa: E402
 
+def read_json(path):
+	with open(path) as f:
+		return json.load(f)
+
+
+def write_text(path, text):
+	with open(path, "w") as f:
+		f.write(text)
+
+
 KEY = b"_https://claude.ai\x00\x01" + m.MAP_KEY
 
 
@@ -47,18 +57,18 @@ class MoveSessionTest(unittest.TestCase):
 			old_cwd, new_cwd = os.path.join(root, "old"), os.path.join(root, "new")
 			os.makedirs(old_cwd); os.makedirs(new_cwd)
 			src = m.project_dir(old_cwd); os.makedirs(os.path.join(src, "cli-1"))
-			open(os.path.join(src, "cli-1.jsonl"), "w").write("{}\n")
+			write_text(os.path.join(src, "cli-1.jsonl"), "{}\n")
 			path = os.path.join(root, "local_a.json")
-			json.dump({"sessionId": "local_a", "cliSessionId": "cli-1", "title": "A", "cwd": old_cwd, "originCwd": old_cwd, "envScopeId": "ws-old"}, open(path, "w"))
+			write_text(path, json.dumps({"sessionId": "local_a", "cliSessionId": "cli-1", "title": "A", "cwd": old_cwd, "originCwd": old_cwd, "envScopeId": "ws-old"}))
 			backup = os.path.join(root, "backup"); os.makedirs(backup)
 
 			m.move_session(path, {"id": "ws-new", "name": "New", "cwd": new_cwd}, backup)
 
-			d = json.load(open(path))
+			d = read_json(path)
 			self.assertEqual((d["cwd"], d["originCwd"], d["envScopeId"], d["startedFromEnvironmentId"]), (new_cwd, new_cwd, "ws-new", "ws-new"))
 			self.assertTrue(os.path.exists(os.path.join(m.project_dir(new_cwd), "cli-1.jsonl")))
 			self.assertTrue(os.path.isdir(os.path.join(m.project_dir(new_cwd), "cli-1")))
-			self.assertEqual(json.load(open(os.path.join(backup, "local_a.json")))["cwd"], old_cwd)
+			self.assertEqual(read_json(os.path.join(backup, "local_a.json"))["cwd"], old_cwd)
 
 
 if __name__ == "__main__":
