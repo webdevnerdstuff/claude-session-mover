@@ -29,6 +29,16 @@ BLOCK = 32768
 
 # --- LevelDB (read tables and logs, append one write) ----------------------
 
+def read_bytes(path):
+	with open(path, "rb") as f:
+		return f.read()
+
+
+def read_json(path):
+	with open(path) as f:
+		return json.load(f)
+
+
 def varint(b, i):
 	r = s = 0
 	while True:
@@ -79,7 +89,7 @@ def read_block(f, off, size):
 
 
 def table_entries(path):
-	f = open(path, "rb").read()
+	f = read_bytes(path)
 	foot = f[-48:]; i = 0
 	_, i = varint(foot, i); _, i = varint(foot, i)
 	io, i = varint(foot, i); isz, i = varint(foot, i)
@@ -91,7 +101,7 @@ def table_entries(path):
 
 
 def log_records(path):
-	f = open(path, "rb").read(); pos = 0; buf = b""
+	f = read_bytes(path); pos = 0; buf = b""
 	while pos + 7 <= len(f):
 		left = BLOCK - pos % BLOCK
 		if left < 7:
@@ -200,7 +210,7 @@ def write_env_map(changes, db=LDB_DIR):
 def workspaces():
 	out = []
 	try:
-		presets = json.load(open(PRESETS))
+		presets = read_json(PRESETS)
 	except Exception:
 		return out
 	for acc in presets.get("byAccount", {}).values():
@@ -224,7 +234,7 @@ def list_sessions():
 	rows = []
 	for path in session_files():
 		try:
-			d = json.load(open(path))
+			d = read_json(path)
 		except Exception:
 			continue
 		if d.get("isArchived"):
@@ -258,7 +268,7 @@ def git_anchor(cwd, trusted_at):
 
 
 def move_session(path, ws, backup):
-	d = json.load(open(path))
+	d = read_json(path)
 	old_cwd = d.get("cwd"); new_cwd = ws["cwd"]
 	shutil.copy2(path, backup)
 	cli = d.get("cliSessionId")
@@ -302,7 +312,7 @@ def detach(log_path):
 
 
 def apply(moves_path):
-	moves = json.load(sys.stdin if moves_path == "-" else open(moves_path))
+	moves = json.load(sys.stdin) if moves_path == "-" else read_json(moves_path)
 	stamp = time.strftime("%Y%m%d-%H%M%S")
 	backup = os.path.join(BACKUP_ROOT, "mover-" + stamp)
 	os.makedirs(backup, exist_ok=True)
@@ -349,7 +359,7 @@ if __name__ == "__main__":
 	if len(sys.argv) >= 2 and sys.argv[1] == "list":
 		print(json.dumps(list_sessions()))
 	elif len(sys.argv) >= 2 and sys.argv[1] == "last":
-		print(open(LAST_RESULT).read() if os.path.exists(LAST_RESULT) else "null")
+		print(read_bytes(LAST_RESULT).decode() if os.path.exists(LAST_RESULT) else "null")
 	elif len(sys.argv) >= 3 and sys.argv[1] == "apply":
 		apply(sys.argv[2])
 	else:

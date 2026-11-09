@@ -5,7 +5,18 @@
 	</picture>
 </h1>
 
-Move sessions between workspaces in the Claude desktop app's Code tab. The app has no way to change a session's workspace once it is made: session-mover adds a pane where you pick the new workspace for each session, then quits Claude, moves them, and reopens it.
+<p align="center">
+	<strong>Move sessions between workspaces in the Claude desktop app's Code tab.</strong>
+</p>
+
+<p align="center">
+	<a href="https://github.com/webdevnerdstuff/claude-session-mover/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/webdevnerdstuff/claude-session-mover?color=ff1190&label=release"></a>
+	<a href="https://github.com/webdevnerdstuff/claude-session-mover/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/webdevnerdstuff/claude-session-mover/actions/workflows/ci.yml/badge.svg"></a>
+	<img alt="Claude Code 2.1.287+" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-2492ff">
+	<a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/webdevnerdstuff/claude-session-mover?color=555"></a>
+</p>
+
+The app has no way to change a session's workspace once it is made: session-mover adds a pane where you pick the new workspace for each session, then quits Claude, moves them, and reopens it.
 
 ## Why use it
 
