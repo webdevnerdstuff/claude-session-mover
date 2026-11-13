@@ -35,12 +35,12 @@ Run `pnpm check` before every commit. A type-check needs the types Claude Code l
 
 The desktop app keeps a session's workspace in two places, and the sidebar reads the second:
 
-1. The session's file, `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<id>.json`: `cwd`, `originCwd`, `gitAnchors`, `envScopeId` and `startedFromEnvironmentId`.
+1. The session's file, `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<id>.json` (Linux: `~/.config/Claude/...`): `cwd`, `originCwd`, `gitAnchors`, `envScopeId` and `startedFromEnvironmentId`. Linux files also hold the folder in `folderPlace` and `gitAnchorsFolderRealpath`, and may have `gitAnchorsLookupOnly` with no `gitAnchors` (left that way).
 2. The renderer's Local Storage (LevelDB, `Local Storage/leveldb`), key `persisted.ccd-started-environments`, `state.bySessionId[<session id>]` → environment preset id. **This is what the sidebar groups by.** A session missing from it appears to fall back to its file's `envScopeId`, then to a preset with the same folder (observed, not documented).
 
-Workspaces are the presets in `ccd-session-presets.json` with a `local` target and a `cwd`.
+Workspaces are the presets in `ccd-session-presets.json` with a `local` target and a `cwd`. On Linux the sidebar also groups a session with no preset by its folder, so every folder a session uses is offered as well, with the id `folder:<path>`; moving to one clears the preset fields (only where the file has them) and sets the map entry, if any, to `null`.
 
-Both are only safe to write while the app is quit (it holds LevelDB open and writes the session files back on quit). So `apply` detaches (double fork and `setsid`, so quitting Claude does not end it), quits the app by its bundle id, waits for `/Applications/Claude.app/Contents/MacOS/Claude` to exit, backs up, writes, and reopens the app. It writes `~/claude-session-backups/last-apply.json`, which the next `session.start` reports in a toast.
+Both are only safe to write while the app is quit (it holds LevelDB open and writes the session files back on quit). So `apply` detaches (double fork and `setsid`, so quitting Claude does not end it), quits the app (macOS: by its bundle id; Linux: SIGTERM to the main `/usr/lib/claude-desktop/claude-desktop` process, the one without `--type=`), waits for it to exit, backs up, writes, and reopens the app. It writes `~/claude-session-backups/last-apply.json`, which the next `session.start` reports in a toast.
 
 ## Rules to keep
 
@@ -72,7 +72,8 @@ These are refused at load, so `validate` catches them:
 - Comments say what the code holds or why, in plain sentences; no restating the code.
 - No `else` after a `return`.
 - Named exports; `register` is the hooks module's entry.
-- Python: standard library only, tabs, runs on the `python3` macOS ships.
+- Python: standard library only, tabs, runs on the `python3` macOS ships and on Linux.
+- Tests and manual runs can point the helper at copies: `SESSION_MOVER_APP_DIR`, `SESSION_MOVER_PROJECTS_DIR`, `SESSION_MOVER_BACKUP_ROOT`.
 
 ## Git
 

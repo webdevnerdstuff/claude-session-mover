@@ -104,11 +104,11 @@ export const register: Register = on => {
 
 	on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
 		const table = $.ui.resolve(e)
-		// Mobile has no Select; moving needs the Mac the sessions live on anyway.
+		// Mobile has no Select; moving needs the computer the sessions live on anyway.
 		if (e.surface === 'mobile' || !('Select' in table)) {
 			const { Text } = table
 
-			return <Text dimColor>Open this pane in Claude on your Mac to move sessions.</Text>
+			return <Text dimColor>Open this pane in Claude on your computer to move sessions.</Text>
 		}
 		const { Box, Button, Select, Text } = table
 		const data = await read($, listing)
