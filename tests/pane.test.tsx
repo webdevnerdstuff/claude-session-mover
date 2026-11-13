@@ -147,6 +147,6 @@ test('picking the current workspace again undoes the move', async ($, on) => {
 test('mobile shows a note instead of pickers', async ($, on) => {
 	engine(on, [])
 	const ui = await $.ui.mount({ ...PANE, surface: 'mobile' })
-	expect((await ui.find({ type: 'Text' }))?.text).toMatch(/on your Mac/)
+	expect((await ui.find({ type: 'Text' }))?.text).toMatch(/on your computer/)
 	await ui.unmount()
 })

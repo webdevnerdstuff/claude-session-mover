@@ -4,25 +4,36 @@
   session_mover.py list                 JSON of workspaces and sessions
   session_mover.py apply <moves.json>   quit Claude, apply, reopen Claude ("-": stdin)
   session_mover.py last                 JSON of the last apply's result, or null
+  session_mover.py move <session> <workspace|folder> [--dry-run]
+                                        move one session from a system terminal, with Claude
+                                        already quit (it refuses while Claude runs)
 
 A workspace is an environment preset (ccd-session-presets.json). The sidebar
 groups a session by the app's Local Storage map
 `persisted.ccd-started-environments`, so a move edits that map as well as the
 session's own file. Both can only be written while Claude is quit, which is
 why `apply` detaches, quits the app, waits for it to exit, then reopens it.
+
+Runs on macOS and Linux. On Linux the app keeps the same files under
+~/.config/Claude, and the sidebar groups sessions by folder as well as by preset,
+so every folder a session already uses is offered as a workspace too ("folder:<path>").
 """
-import glob, json, os, re, shutil, struct, subprocess, sys, time
+import glob, json, os, re, shutil, signal, struct, subprocess, sys, time
 
 HOME = os.path.expanduser("~")
-APP_DIR = os.path.join(HOME, "Library/Application Support/Claude")
+LINUX = sys.platform.startswith("linux")
+APP_DIR = os.environ.get("SESSION_MOVER_APP_DIR") or (
+	os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "Claude") if LINUX
+	else os.path.join(HOME, "Library/Application Support/Claude"))
 SESSIONS_DIR = os.path.join(APP_DIR, "claude-code-sessions")
 PRESETS = os.path.join(APP_DIR, "ccd-session-presets.json")
 LDB_DIR = os.path.join(APP_DIR, "Local Storage/leveldb")
-PROJECTS_DIR = os.path.join(HOME, ".claude/projects")
-BACKUP_ROOT = os.path.join(HOME, "claude-session-backups")
+PROJECTS_DIR = os.environ.get("SESSION_MOVER_PROJECTS_DIR") or os.path.join(HOME, ".claude/projects")
+BACKUP_ROOT = os.environ.get("SESSION_MOVER_BACKUP_ROOT") or os.path.join(HOME, "claude-session-backups")
 LAST_RESULT = os.path.join(BACKUP_ROOT, "last-apply.json")
-APP_BIN = "/Applications/Claude.app/Contents/MacOS/Claude"
+APP_BIN = "/usr/lib/claude-desktop/claude-desktop" if LINUX else "/Applications/Claude.app/Contents/MacOS/Claude"
 APP_ID = "com.anthropic.claudefordesktop"
+FOLDER = "folder:"   # workspace id prefix for a plain folder (Linux), as opposed to a preset
 MAP_KEY = b"persisted.ccd-started-environments"
 BLOCK = 32768
 
@@ -221,12 +232,33 @@ def workspaces():
 	return out
 
 
+def folder_workspaces(spaces):
+	"""On Linux the sidebar also groups sessions that have no preset by their folder: offer each such folder."""
+	if not LINUX:
+		return []
+	have = {w["cwd"] for w in spaces}; out = {}
+	for path in session_files():
+		try:
+			d = read_json(path)
+		except Exception:
+			continue
+		cwd = d.get("cwd")
+		if cwd and cwd not in have and not d.get("isArchived") and "/scratch-workspaces/" not in cwd:
+			out[cwd] = {"id": FOLDER + cwd, "name": os.path.basename(cwd.rstrip("/")) or cwd, "cwd": cwd}
+	return sorted(out.values(), key=lambda w: w["name"].lower())
+
+
+def all_workspaces():
+	spaces = workspaces()
+	return spaces + folder_workspaces(spaces)
+
+
 def session_files():
 	return glob.glob(os.path.join(SESSIONS_DIR, "*", "*", "local_*.json"))
 
 
 def list_sessions():
-	spaces = workspaces()
+	spaces = all_workspaces()
 	by_cwd = {}
 	for w in spaces:
 		by_cwd.setdefault(w["cwd"], w["id"])
@@ -241,6 +273,8 @@ def list_sessions():
 			continue
 		sid = d.get("sessionId")
 		ws = env_map.get(sid) or d.get("envScopeId") or by_cwd.get(d.get("cwd"))
+		if not ws and LINUX and d.get("cwd"):
+			ws = FOLDER + d["cwd"]
 		rows.append({
 			"id": sid,
 			"title": d.get("title") or "Untitled",
@@ -267,6 +301,11 @@ def git_anchor(cwd, trusted_at):
 	return [{"gitRoot": root.stdout.strip(), "commonDir": common.stdout.strip(), "trustedAt": trusted_at}]
 
 
+def preset_id(ws):
+	"""The environment preset a workspace stands for; None for a plain folder."""
+	return None if ws["id"].startswith(FOLDER) else ws["id"]
+
+
 def move_session(path, ws, backup):
 	d = read_json(path)
 	old_cwd = d.get("cwd"); new_cwd = ws["cwd"]
@@ -276,11 +315,20 @@ def move_session(path, ws, backup):
 		trusted = next((a.get("trustedAt") for a in d.get("gitAnchors") or []), int(time.time() * 1000))
 		d["cwd"] = new_cwd
 		d["originCwd"] = new_cwd
-		d["gitAnchors"] = git_anchor(new_cwd, trusted)
-	d["envScopeId"] = ws["id"]
-	d["startedFromEnvironmentId"] = ws["id"]
-	with open(path, "w") as f:
+		if "gitAnchors" in d or not d.get("gitAnchorsLookupOnly"):
+			d["gitAnchors"] = git_anchor(new_cwd, trusted)
+		# The Linux app also keeps the folder here; the sidebar groups by it.
+		if "folderPlace" in d:
+			d["folderPlace"] = {"cwd": new_cwd, "realPath": os.path.realpath(new_cwd)}
+		if "gitAnchorsFolderRealpath" in d:
+			d["gitAnchorsFolderRealpath"] = os.path.realpath(new_cwd)
+	for k in ("envScopeId", "startedFromEnvironmentId"):
+		if preset_id(ws) or k in d:   # a plain folder only clears these; it never adds them
+			d[k] = preset_id(ws)
+	tmp = path + ".mover-tmp"
+	with open(tmp, "w") as f:
 		json.dump(d, f)
+	os.replace(tmp, path)
 	# Copy the conversation so the session resumes from its new folder.
 	if cli and old_cwd and old_cwd != new_cwd:
 		src, dst = project_dir(old_cwd), project_dir(new_cwd)
@@ -294,9 +342,50 @@ def move_session(path, ws, backup):
 
 # --- Apply (detached, around a restart of Claude) ---------------------------
 
+def app_pids():
+	"""The app's main process: its binary, started without a Chromium `--type=` (those are its helpers)."""
+	out = subprocess.run(["ps", "-axo", "pid=,args="], capture_output=True, text=True).stdout
+	pids = []
+	for line in out.splitlines():
+		pid, _, args = line.strip().partition(" ")
+		if args.split(" ")[0] == APP_BIN and "--type=" not in args:
+			pids.append(int(pid))
+	return pids
+
+
 def app_running():
+	if LINUX:
+		return bool(app_pids())
 	out = subprocess.run(["ps", "-axo", "comm"], capture_output=True, text=True).stdout
 	return APP_BIN in out.splitlines()
+
+
+def quit_app():
+	if LINUX:
+		# A normal quit: Electron closes its windows and writes its files on SIGTERM, as on Quit from the tray.
+		for pid in app_pids():
+			try:
+				os.kill(pid, signal.SIGTERM)
+			except ProcessLookupError:
+				pass
+		return
+	subprocess.run(["osascript", "-e", 'tell application id "%s" to quit' % APP_ID], timeout=30)
+
+
+def open_app():
+	if LINUX:
+		subprocess.Popen([APP_BIN], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+		return
+	subprocess.run(["open", "-b", APP_ID])
+
+
+def backup_dir():
+	"""A new folder for this run; never one an earlier run in the same second already holds."""
+	base = os.path.join(BACKUP_ROOT, "mover-" + time.strftime("%Y%m%d-%H%M%S")); path = base; n = 1
+	while os.path.exists(path):
+		n += 1; path = "%s-%d" % (base, n)
+	os.makedirs(path)
+	return path
 
 
 def detach(log_path):
@@ -313,9 +402,7 @@ def detach(log_path):
 
 def apply(moves_path):
 	moves = json.load(sys.stdin) if moves_path == "-" else read_json(moves_path)
-	stamp = time.strftime("%Y%m%d-%H%M%S")
-	backup = os.path.join(BACKUP_ROOT, "mover-" + stamp)
-	os.makedirs(backup, exist_ok=True)
+	backup = backup_dir()
 	with open(os.path.join(backup, "moves.json"), "w") as f:
 		json.dump(moves, f)
 	log_path = os.path.join(backup, "apply.log")
@@ -325,7 +412,7 @@ def apply(moves_path):
 	result = {"at": int(time.time() * 1000), "backup": backup, "moved": [], "error": None}
 	try:
 		time.sleep(1)
-		subprocess.run(["osascript", "-e", 'tell application id "%s" to quit' % APP_ID], timeout=30)
+		quit_app()
 		for _ in range(240):
 			if not app_running():
 				break
@@ -333,7 +420,7 @@ def apply(moves_path):
 		else:
 			raise RuntimeError("Claude did not quit within 2 minutes; nothing was changed.")
 		time.sleep(1)
-		spaces = {w["id"]: w for w in workspaces()}
+		spaces = {w["id"]: w for w in all_workspaces()}
 		files = {os.path.basename(p)[:-5]: p for p in session_files()}
 		shutil.copytree(LDB_DIR, os.path.join(backup, "leveldb"))
 		changes = {}
@@ -342,7 +429,7 @@ def apply(moves_path):
 			if not ws or not path:
 				print("skip", m); continue
 			title = move_session(path, ws, backup)
-			changes[m["sessionId"]] = ws["id"]
+			changes[m["sessionId"]] = preset_id(ws)
 			result["moved"].append({"title": title, "workspace": ws["name"]})
 			print("moved", title, "->", ws["name"])
 		print("local storage:", write_env_map(changes))
@@ -352,7 +439,55 @@ def apply(moves_path):
 	finally:
 		with open(LAST_RESULT, "w") as f:
 			json.dump(result, f)
-		subprocess.run(["open", "-b", APP_ID])
+		open_app()
+
+
+# --- Move from a terminal ----------------------------------------------------
+
+def find_session(q):
+	rows = []
+	for path in session_files():
+		try:
+			d = read_json(path)
+		except Exception:
+			continue
+		rows.append((path, d.get("sessionId") or os.path.basename(path)[:-5], d.get("title") or "Untitled", d.get("cwd") or "?"))
+	ql = q.lower()
+	hits = [r for r in rows if r[1] in (q, "local_" + q) or r[2].lower() == ql]
+	if not hits:
+		hits = [r for r in rows if r[1].startswith(q) or r[1].startswith("local_" + q) or ql in r[2].lower()]
+	if len(hits) == 1:
+		return hits[0]
+	if not hits:
+		sys.exit("No session matches %r." % q)
+	sys.exit("%d sessions match %r; be more specific:\n" % (len(hits), q) + "\n".join("  %s  %s  (%s)" % (r[1][6:14], r[2], r[3]) for r in hits[:15]))
+
+
+def find_workspace(q):
+	spaces = all_workspaces()
+	for w in spaces:
+		if w["name"].lower() == q.lower() or w["id"] == q:
+			return w
+	cwd = os.path.realpath(os.path.expanduser(q))
+	if not os.path.isdir(cwd):
+		sys.exit("%s is not a folder, and no workspace is named %r." % (cwd, q))
+	return next((w for w in spaces if w["cwd"] == cwd), {"id": FOLDER + cwd, "name": os.path.basename(cwd), "cwd": cwd})
+
+
+def move_cli(q, target, dry):
+	"""One move while Claude is already quit: for a terminal, or when the pane cannot restart the app."""
+	if not dry and app_running():
+		sys.exit("Claude is running. Quit it fully first, then run this from a system terminal (not one inside Claude). Nothing was changed.")
+	path, sid, title, old = find_session(q)
+	ws = find_workspace(target)
+	print("%s: %s -> %s (%s)" % (title, old, ws["cwd"], "preset " + ws["name"] if preset_id(ws) else "folder"))
+	if dry:
+		print("Dry run: nothing was changed."); return
+	backup = backup_dir()
+	shutil.copytree(LDB_DIR, os.path.join(backup, "leveldb"))
+	move_session(path, ws, backup)
+	print("Local Storage:", write_env_map({sid: preset_id(ws)}))
+	print("Moved. Backup: %s. Start Claude again." % backup)
 
 
 if __name__ == "__main__":
@@ -362,5 +497,7 @@ if __name__ == "__main__":
 		print(read_bytes(LAST_RESULT).decode() if os.path.exists(LAST_RESULT) else "null")
 	elif len(sys.argv) >= 3 and sys.argv[1] == "apply":
 		apply(sys.argv[2])
+	elif len(sys.argv) >= 4 and sys.argv[1] == "move":
+		move_cli(sys.argv[2], sys.argv[3], "--dry-run" in sys.argv[4:])
 	else:
 		sys.exit(__doc__)

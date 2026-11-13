@@ -23,7 +23,7 @@ The app has no way to change a session's workspace once it is made: session-move
 > [!TIP]
 > **Moving sessions uses zero tokens.** Asking Claude to move a session for you can take a lot of back and forth, and every round of it spends tokens you could use on real work. session-mover takes that out of the equation: it runs locally, never calls the model, and moves your sessions in a few clicks.
 
-- **Uses no tokens**: everything runs on your Mac, never through Claude
+- **Uses no tokens**: everything runs on your computer, never through Claude
 - Lists your sessions by workspace, with a **Move to** picker on each
 - Queue several moves, undo any of them, then apply them all at once
 - Moves the session's folder, its sidebar workspace and its conversation history together
@@ -34,8 +34,8 @@ The app has no way to change a session's workspace once it is made: session-move
 
 ## Requirements
 
-- macOS, with the Claude desktop app in `/Applications`
-- `python3` (run `xcode-select --install` once if macOS says it is missing)
+- macOS, with the Claude desktop app in `/Applications`, or Linux, with it in `/usr/lib/claude-desktop`
+- `python3` (on macOS, run `xcode-select --install` once if it says it is missing)
 - Claude Code 2.1.287 or newer
 
 ## Install
@@ -77,11 +77,32 @@ Claude quits, the moves are applied, and Claude reopens on its own, usually with
 
 Anything running in Claude stops when it quits, so finish or pause running sessions first. If Claude has not quit within 2 minutes, nothing is changed and Claude is reopened.
 
+## Linux
+
+On Linux the app keeps the same files under `~/.config/Claude` instead of `~/Library/Application Support/Claude`, and the
+pane works the same way: **Apply & restart Claude** quits the app (a normal quit, as from the tray), moves the sessions
+and starts it again.
+
+The Linux sidebar also groups sessions that were not started from a workspace preset by their folder, so the pane offers
+every folder a session already uses as a workspace too, alongside the presets.
+
+You can also move one session from a system terminal (Konsole, GNOME Terminal; not a terminal inside Claude), with
+Claude already quit:
+
+```bash
+python3 bin/session_mover.py move "<title, or the start of the session id>" ~/code/other-project --dry-run
+python3 bin/session_mover.py move "<title, or the start of the session id>" ~/code/other-project
+```
+
+It refuses while Claude is running. The destination can be any folder or a workspace preset's name. Start Claude again
+afterwards. This works on macOS too.
+
 ## What a move changes
 
 A workspace is one of the app's environment presets: a name and a folder. For each session it moves, session-mover:
 
-- Points the session's own file at the workspace's folder and environment ID
+- Points the session's own file at the workspace's folder and environment ID (on Linux also `folderPlace` and
+  `gitAnchorsFolderRealpath`, where the app keeps the folder as well)
 - Changes the session's entry in the app's Local Storage map, which the sidebar groups sessions by
 - Copies the session's conversation history to the new folder's project, so it resumes there; the original stays where it was
 
@@ -95,7 +116,7 @@ Each run makes a folder `~/claude-session-backups/mover-<time>/` holding:
 - the app's whole Local Storage folder (`leveldb/`) as it was
 - `moves.json`, what was asked, and `apply.log`, what happened
 
-To undo a run, quit Claude, copy the session files back into `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/`, and replace `~/Library/Application Support/Claude/Local Storage/leveldb` with the backup's `leveldb/`. Or simply move the sessions back with the pane.
+To undo a run, quit Claude, copy the session files back into `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/` (Linux: `~/.config/Claude/claude-code-sessions/<account>/<org>/`), and replace `Local Storage/leveldb` in that same app folder with the backup's `leveldb/`. Or simply move the sessions back with the pane.
 
 ## Develop
 
