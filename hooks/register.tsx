@@ -172,7 +172,7 @@ export const register: Register = on => {
 			})
 
 		return (
-			<Box flexDirection="column" gap="xs">
+			<Box flexDirection="column" rowGap="xs">
 				<Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={1}>
 					<Select
 						key="filter"
