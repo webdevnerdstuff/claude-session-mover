@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-	<strong>Move sessions between workspaces in the Claude desktop app's Code tab.</strong>
+	<strong>Move sessions between environments in the Claude desktop app's Code tab.</strong>
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 	<a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/webdevnerdstuff/claude-session-mover?color=555"></a>
 </p>
 
-The app has no way to change a session's workspace once it is made: session-mover adds a pane where you pick the new workspace for each session, then quits Claude, moves them, and reopens it.
+The app has no way to change a session's environment once it is made: session-mover adds a pane where you pick the new environment for each session, then quits Claude, moves them, and reopens it.
 
 ## Why use it
 
@@ -24,9 +24,9 @@ The app has no way to change a session's workspace once it is made: session-move
 > **Moving sessions uses zero tokens.** Asking Claude to move a session for you can take a lot of back and forth, and every round of it spends tokens you could use on real work. session-mover takes that out of the equation: it runs locally, never calls the model, and moves your sessions in a few clicks.
 
 - **Uses no tokens**: everything runs on your Mac, never through Claude
-- Lists your sessions by workspace, with a **Move to** picker on each
+- Lists your sessions by environment, with a **Move to** picker on each
 - Queue several moves, undo any of them, then apply them all at once
-- Moves the session's folder, its sidebar workspace and its conversation history together
+- Moves the session's folder, its sidebar environment and its conversation history together
 - Backs up everything it changes before changing it
 
 > [!WARNING]
@@ -69,7 +69,7 @@ claude plugin uninstall session-mover@claude-session-mover
 
    **In a terminal**, the pane docks beside the chat only in Claude Code's fullscreen renderer: run `/tui fullscreen` once to turn it on for every session. Without it, the pane opens above the prompt, where <kbd>↑</kbd> and <kbd>↓</kbd> scroll a long list and <kbd>Tab</kbd> moves between controls. If the keys go back to the prompt, press <kbd>Ctrl</kbd>+<kbd>X</kbd> <kbd>Tab</kbd> (twice if a mod puts a bar above the prompt) or run `/move-sessions` again.
 
-2. Pick a workspace under **Show**, or keep **All workspaces** for every session, newest first. A long list is split into pages; use **Previous** and **Next** to move between them.
+2. Pick an environment under **Show**, or keep **All environments** for every session, newest first. A long list is split into pages; use **Previous** and **Next** to move between them.
 3. Set **Move to** on each session you want to move. The moves wait under **Queued moves**, each with **Undo**.
 4. Click **Apply & restart Claude**, then **Quit and move**.
 
@@ -79,9 +79,9 @@ Anything running in Claude stops when it quits, so finish or pause running sessi
 
 ## What a move changes
 
-A workspace is one of the app's environment presets: a name and a folder. For each session it moves, session-mover:
+An environment is one of the app's presets, a name and a folder, and the sidebar groups sessions by it. For each session it moves, session-mover:
 
-- Points the session's own file at the workspace's folder and environment ID
+- Points the session's own file at the environment's folder and ID
 - Changes the session's entry in the app's Local Storage map, which the sidebar groups sessions by
 - Copies the session's conversation history to the new folder's project, so it resumes there; the original stays where it was
 

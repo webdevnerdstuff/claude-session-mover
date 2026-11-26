@@ -8,7 +8,7 @@ const COMMAND = 'move-sessions'
 const NONE = '__none'
 // One drawing holds 100,000 serialized characters; past it the desktop keeps
 // the last drawing, whose buttons no longer answer. Each row carries its own
-// copy of the workspace options, so the rows on a page share this budget.
+// copy of the environment options, so the rows on a page share this budget.
 const ROWS_BUDGET = 60_000
 // A row's characters besides its options: title, keys, handler handles.
 const ROW_BASE = 600
@@ -88,7 +88,7 @@ export const register: Register = on => {
 	on('session.start', async ($, e, next) => {
 		await $.command.register({
 			name: COMMAND,
-			description: 'Move sessions between sidebar workspaces',
+			description: 'Move sessions between sidebar environments',
 		})
 		void reportLastApply($).catch(() => undefined)
 
@@ -132,13 +132,13 @@ export const register: Register = on => {
 			row.workspaceId && names.has(row.workspaceId) ? row.workspaceId : NONE
 		const count = (id: string) => data.sessions.filter(row => where(row) === id).length
 		const filterOptions = [
-			{ value: 'all', label: `All workspaces (${data.sessions.length})` },
+			{ value: 'all', label: `All environments (${data.sessions.length})` },
 			...data.workspaces.map(w => ({ value: w.id, label: `${w.name} (${count(w.id)})` })),
-			{ value: NONE, label: `No workspace (${count(NONE)})` },
+			{ value: NONE, label: `No environment (${count(NONE)})` },
 		]
 		const moveOptions = [
 			...data.workspaces.map(w => ({ value: w.id, label: w.name })),
-			{ value: NONE, label: 'No workspace' },
+			{ value: NONE, label: 'No environment' },
 		]
 		const list = shown === 'all' ? data.sessions : data.sessions.filter(row => where(row) === shown)
 		const rowCost = JSON.stringify(moveOptions).length + ROW_BASE
@@ -178,15 +178,12 @@ export const register: Register = on => {
 
 				{note !== '' && <Text color="yellow">{note}</Text>}
 
-				<Box flexDirection="column">
+				<Box flexDirection="column" rowGap="xs">
 					{rows.length === 0 && <Text dimColor>No sessions here.</Text>}
 					{rows.map(row => (
-						<Box key={`row-${row.id}`} flexDirection="row" gap={1}>
+						<Box key={`row-${row.id}`} flexDirection="row" alignItems="center" gap={1}>
 							<Box flexGrow={1} flexDirection="column">
 								<Text>{short(row.title)}</Text>
-								{shown === 'all' && (
-									<Text dimColor>{names.get(where(row)) ?? 'No workspace'}</Text>
-								)}
 							</Box>
 							<Select
 								key={`move-${row.id}`}
@@ -213,13 +210,17 @@ export const register: Register = on => {
 					)}
 				</Box>
 
-				<Box flexDirection="column">
+				{/* The queue sits in its own card, apart from the session list. */}
+				<Box flexDirection="column" rowGap="xs" borderStyle="round" paddingX={1}>
 					<Text bold>Queued moves: {pending.length}</Text>
 					{pending.map(([id, target]) => (
-						<Box key={`queued-${id}`} flexDirection="row" gap={1}>
-							<Text>
-								{short(byId.get(id)?.title ?? id, 40)} → {names.get(target) ?? target}
-							</Text>
+						// The title takes the free width, so every Undo lines up on the right.
+						<Box key={`queued-${id}`} flexDirection="row" alignItems="center" gap={1}>
+							<Box flexGrow={1} flexShrink={1}>
+								<Text>
+									{short(byId.get(id)?.title ?? id, 40)} → {names.get(target) ?? target}
+								</Text>
+							</Box>
 							<Button
 								key={`undo-${id}`}
 								label="Undo"

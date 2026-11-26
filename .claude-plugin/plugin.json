@@ -1,7 +1,7 @@
 {
 	"name": "session-mover",
-	"version": "0.1.1",
-	"description": "Move Claude desktop Code sessions between sidebar workspaces from a pane. /move-sessions opens it.",
+	"version": "0.1.2",
+	"description": "Move Claude desktop Code sessions between sidebar environments from a pane. /move-sessions opens it.",
 	"author": {
 		"name": "WebDevNerdStuff & Bunnies... lots and lots of bunnies!",
 		"email": "webdevnerdstuff@gmail.com",
@@ -16,7 +16,7 @@
 		"function-hooks",
 		"claude-desktop",
 		"sessions",
-		"workspaces"
+		"environments"
 	],
 	"types": "./types/index.d.ts"
 }

@@ -51,7 +51,7 @@ class EnvMapTest(unittest.TestCase):
 
 
 class MoveSessionTest(unittest.TestCase):
-	def test_points_the_session_at_the_workspace(self):
+	def test_points_the_session_at_the_environment(self):
 		with tempfile.TemporaryDirectory() as root:
 			projects = os.path.join(root, "projects"); m.PROJECTS_DIR = projects
 			old_cwd, new_cwd = os.path.join(root, "old"), os.path.join(root, "new")

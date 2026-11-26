@@ -133,7 +133,7 @@ test('a large list stays within the drawing limit and pages', async ($, on) => {
 	await ui.unmount()
 })
 
-test('picking the current workspace again undoes the move', async ($, on) => {
+test('picking the current environment again undoes the move', async ($, on) => {
 	engine(on, [])
 	await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 	const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
