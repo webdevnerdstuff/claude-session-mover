@@ -218,6 +218,8 @@ def workspaces():
 			t = p.get("target") or {}
 			if t.get("kind") == "local" and t.get("cwd"):
 				out.append({"id": p["id"], "name": p.get("name") or t["cwd"], "cwd": t["cwd"]})
+	# The presets file keeps its own order, not the sidebar's; by name is findable.
+	out.sort(key=lambda w: w["name"].casefold())
 	return out
 
 

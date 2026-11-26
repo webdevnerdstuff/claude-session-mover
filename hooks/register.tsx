@@ -150,6 +150,17 @@ export const register: Register = on => {
 		const byId = new Map(data.sessions.map(row => [row.id, row]))
 		const pending = Object.entries(queued).filter(([id]) => byId.has(id))
 
+		// The mod UI has no rule element: an empty bordered Box draws as a card, and
+		// the desktop shrinks a wide SVG line out of sight. A row of box glyphs in the
+		// queue heading's accent, clipped at the pane's edge, draws as a line everywhere.
+		const divider = (
+			<Box width="100%" overflow="hidden">
+				<Text color="claude" wrap="clip">
+					{'─'.repeat(400)}
+				</Text>
+			</Box>
+		)
+
 		const pick = (row: SessionRow, value: string) =>
 			update($, queue, list => {
 				const rest = { ...list }
@@ -161,8 +172,8 @@ export const register: Register = on => {
 			})
 
 		return (
-			<Box flexDirection="column" gap={1}>
-				<Box flexDirection="row" gap={1}>
+			<Box flexDirection="column" gap="xs">
+				<Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={1}>
 					<Select
 						key="filter"
 						label="Show"
@@ -175,6 +186,7 @@ export const register: Register = on => {
 					/>
 					<Button key="refresh" label="Reload" onPress={() => void load($)} />
 				</Box>
+				{divider}
 
 				{note !== '' && <Text color="yellow">{note}</Text>}
 
@@ -210,9 +222,13 @@ export const register: Register = on => {
 					)}
 				</Box>
 
-				{/* The queue sits in its own card, apart from the session list. */}
-				<Box flexDirection="column" rowGap="xs" borderStyle="round" paddingX={1}>
-					<Text bold>Queued moves: {pending.length}</Text>
+				{divider}
+
+				{/* The queue sits under its own divider; the apply step lives with it. */}
+				<Box flexDirection="column" rowGap="xs">
+					<Text bold color="claude">
+						Queued moves: {pending.length}
+					</Text>
 					{pending.map(([id, target]) => (
 						// The title takes the free width, so every Undo lines up on the right.
 						<Box key={`queued-${id}`} flexDirection="row" alignItems="center" gap={1}>
@@ -235,31 +251,46 @@ export const register: Register = on => {
 							/>
 						</Box>
 					))}
-				</Box>
 
-				{pending.length > 0 && !confirming && (
-					<Button
-						key="apply"
-						label="Apply & restart Claude"
-						onPress={() => void update($, isConfirming, () => true)}
-					/>
-				)}
-				{pending.length > 0 && confirming && (
-					<Box flexDirection="column">
-						<Text color="yellow">
-							Claude will quit, move {pending.length} session(s), and reopen. Anything running
-							in Claude stops. Backups go to ~/claude-session-backups.
-						</Text>
-						<Box flexDirection="row" gap={1}>
-							<Button key="confirm" label="Quit and move" onPress={() => void applyMoves($)} />
+					{pending.length > 0 && !confirming && (
+						<Box flexDirection="row">
 							<Button
-								key="cancel"
-								label="Cancel"
-								onPress={() => void update($, isConfirming, () => false)}
+								key="apply"
+								label="Apply & restart Claude"
+								variant="primary"
+								onPress={() => void update($, isConfirming, () => true)}
 							/>
 						</Box>
-					</Box>
-				)}
+					)}
+					{pending.length > 0 && confirming && (
+						<Box
+							flexDirection="column"
+							rowGap="xs"
+							borderStyle="round"
+							borderColor="warning"
+							paddingX={1}
+						>
+							<Text color="warning">
+								Claude will quit, move {pending.length} session(s), and reopen. Anything running
+								in Claude stops. Backups go to ~/claude-session-backups.
+							</Text>
+							<Box flexDirection="row" gap={1}>
+								<Button
+									key="confirm"
+									label="Quit and move"
+									variant="primary"
+									onPress={() => void applyMoves($)}
+								/>
+								<Button
+									key="cancel"
+									label="Cancel"
+									variant="secondary"
+									onPress={() => void update($, isConfirming, () => false)}
+								/>
+							</Box>
+						</Box>
+					)}
+				</Box>
 			</Box>
 		)
 	})
