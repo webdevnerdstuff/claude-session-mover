@@ -152,10 +152,12 @@ export const register: Register = on => {
 
 		// The mod UI has no rule element: an empty bordered Box draws as a card, and
 		// the desktop shrinks a wide SVG line out of sight. A row of box glyphs in the
-		// queue heading's accent, clipped at the pane's edge, draws as a line everywhere.
+		// queue heading's accent, held to one row so the glyphs past the pane's edge
+		// wrap out of sight, draws as a line everywhere. (Text's `wrap="clip"` would
+		// say this directly, but Claude 2.1.287 refuses it.)
 		const divider = (
-			<Box width="100%" overflow="hidden">
-				<Text color="claude" wrap="clip">
+			<Box width="100%" height={1} overflow="hidden">
+				<Text color="claude">
 					{'─'.repeat(400)}
 				</Text>
 			</Box>
