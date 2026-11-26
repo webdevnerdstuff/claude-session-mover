@@ -172,7 +172,7 @@ export const register: Register = on => {
 			})
 
 		return (
-			<Box flexDirection="column" rowGap="xs">
+			<Box flexDirection="column" rowGap={0.5}>
 				<Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={1}>
 					<Select
 						key="filter"
@@ -190,7 +190,7 @@ export const register: Register = on => {
 
 				{note !== '' && <Text color="yellow">{note}</Text>}
 
-				<Box flexDirection="column" rowGap="xs">
+				<Box flexDirection="column" rowGap={0.5}>
 					{rows.length === 0 && <Text dimColor>No sessions here.</Text>}
 					{rows.map(row => (
 						<Box key={`row-${row.id}`} flexDirection="row" alignItems="center" gap={1}>
@@ -225,7 +225,7 @@ export const register: Register = on => {
 				{divider}
 
 				{/* The queue sits under its own divider; the apply step lives with it. */}
-				<Box flexDirection="column" rowGap="xs">
+				<Box flexDirection="column" rowGap={0.5}>
 					<Text bold color="claude">
 						Queued moves: {pending.length}
 					</Text>
@@ -265,7 +265,7 @@ export const register: Register = on => {
 					{pending.length > 0 && confirming && (
 						<Box
 							flexDirection="column"
-							rowGap="xs"
+							rowGap={0.5}
 							borderStyle="round"
 							borderColor="warning"
 							paddingX={1}
