@@ -50,8 +50,24 @@ class EnvMapTest(unittest.TestCase):
 			self.assertEqual(m.read_env_map(db)[0]["state"]["bySessionId"]["local_00042"], "ws-new")
 
 
+class WorkspacesTest(unittest.TestCase):
+	def test_lists_local_environments_by_name(self):
+		with tempfile.TemporaryDirectory() as root:
+			path = os.path.join(root, "ccd-session-presets.json")
+			preset = lambda id, name: {"id": id, "name": name, "target": {"kind": "local", "cwd": "/" + id}}
+			write_text(path, json.dumps({"byAccount": {"acct": {"presets": [
+				preset("ws-z", "zebra"), preset("ws-a", "Apple"), preset("ws-m", "mango"),
+				{"id": "ws-r", "name": "Remote", "target": {"kind": "cloud"}},
+			]}}}))
+			saved, m.PRESETS = m.PRESETS, path
+			try:
+				self.assertEqual([w["name"] for w in m.workspaces()], ["Apple", "mango", "zebra"])
+			finally:
+				m.PRESETS = saved
+
+
 class MoveSessionTest(unittest.TestCase):
-	def test_points_the_session_at_the_workspace(self):
+	def test_points_the_session_at_the_environment(self):
 		with tempfile.TemporaryDirectory() as root:
 			projects = os.path.join(root, "projects"); m.PROJECTS_DIR = projects
 			old_cwd, new_cwd = os.path.join(root, "old"), os.path.join(root, "new")

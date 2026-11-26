@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Move Claude desktop Code sessions between sidebar workspaces.
+"""Move Claude desktop Code sessions between sidebar environments.
 
-  session_mover.py list                 JSON of workspaces and sessions
+  session_mover.py list                 JSON of environments and sessions
   session_mover.py apply <moves.json>   quit Claude, apply, reopen Claude ("-": stdin)
   session_mover.py last                 JSON of the last apply's result, or null
 
-A workspace is an environment preset (ccd-session-presets.json). The sidebar
+An environment is a preset in ccd-session-presets.json. The sidebar
 groups a session by the app's Local Storage map
 `persisted.ccd-started-environments`, so a move edits that map as well as the
 session's own file. Both can only be written while Claude is quit, which is
@@ -184,7 +184,7 @@ def read_env_map(db=LDB_DIR):
 
 
 def write_env_map(changes, db=LDB_DIR):
-	"""Point each session at its new workspace in one LevelDB write."""
+	"""Point each session at its new environment in one LevelDB write."""
 	data, raw, key, max_seq = read_env_map(db)
 	if raw is None:
 		return "no map"
@@ -205,7 +205,7 @@ def write_env_map(changes, db=LDB_DIR):
 	return "updated %d" % len(todo)
 
 
-# --- Sessions and workspaces -----------------------------------------------
+# --- Sessions and environments ---------------------------------------------
 
 def workspaces():
 	out = []
@@ -218,6 +218,8 @@ def workspaces():
 			t = p.get("target") or {}
 			if t.get("kind") == "local" and t.get("cwd"):
 				out.append({"id": p["id"], "name": p.get("name") or t["cwd"], "cwd": t["cwd"]})
+	# The presets file keeps its own order, not the sidebar's; by name is findable.
+	out.sort(key=lambda w: w["name"].casefold())
 	return out
 
 

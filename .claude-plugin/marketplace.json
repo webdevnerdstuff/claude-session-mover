@@ -1,6 +1,6 @@
 {
 	"name": "claude-session-mover",
-	"description": "session-mover: move Claude desktop Code sessions between sidebar workspaces.",
+	"description": "session-mover: move Claude desktop Code sessions between sidebar environments.",
 	"owner": {
 		"name": "WebDevNerdStuff & Bunnies... lots and lots of bunnies!",
 		"email": "webdevnerdstuff@gmail.com",

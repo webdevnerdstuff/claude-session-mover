@@ -8,7 +8,7 @@ const COMMAND = 'move-sessions'
 const NONE = '__none'
 // One drawing holds 100,000 serialized characters; past it the desktop keeps
 // the last drawing, whose buttons no longer answer. Each row carries its own
-// copy of the workspace options, so the rows on a page share this budget.
+// copy of the environment options, so the rows on a page share this budget.
 const ROWS_BUDGET = 60_000
 // A row's characters besides its options: title, keys, handler handles.
 const ROW_BASE = 600
@@ -80,6 +80,24 @@ async function reportLastApply($: EngineInterface) {
 	}
 }
 
+// Text's `wrap="clip"` is refused by older engines (2.1.287 among them); 2.1.330
+// is the earliest checked to take it. An engine without `session.version` is older.
+const CLIP_SINCE = [2, 1, 330]
+
+async function canClip($: EngineInterface) {
+	try {
+		const { base, version } = await $.session.version()
+		const parts = (base ?? version).split(/[.-]/).slice(0, 3).map(Number)
+		for (const [n, part] of parts.entries()) {
+			if (part !== CLIP_SINCE[n]) return part > (CLIP_SINCE[n] ?? 0)
+		}
+
+		return true
+	} catch {
+		return false
+	}
+}
+
 function short(text: string, size = 56) {
 	return text.length > size ? `${text.slice(0, size - 1)}…` : text
 }
@@ -88,7 +106,7 @@ export const register: Register = on => {
 	on('session.start', async ($, e, next) => {
 		await $.command.register({
 			name: COMMAND,
-			description: 'Move sessions between sidebar workspaces',
+			description: 'Move sessions between sidebar environments',
 		})
 		void reportLastApply($).catch(() => undefined)
 
@@ -132,13 +150,13 @@ export const register: Register = on => {
 			row.workspaceId && names.has(row.workspaceId) ? row.workspaceId : NONE
 		const count = (id: string) => data.sessions.filter(row => where(row) === id).length
 		const filterOptions = [
-			{ value: 'all', label: `All workspaces (${data.sessions.length})` },
+			{ value: 'all', label: `All environments (${data.sessions.length})` },
 			...data.workspaces.map(w => ({ value: w.id, label: `${w.name} (${count(w.id)})` })),
-			{ value: NONE, label: `No workspace (${count(NONE)})` },
+			{ value: NONE, label: `No environment (${count(NONE)})` },
 		]
 		const moveOptions = [
 			...data.workspaces.map(w => ({ value: w.id, label: w.name })),
-			{ value: NONE, label: 'No workspace' },
+			{ value: NONE, label: 'No environment' },
 		]
 		const list = shown === 'all' ? data.sessions : data.sessions.filter(row => where(row) === shown)
 		const rowCost = JSON.stringify(moveOptions).length + ROW_BASE
@@ -149,6 +167,23 @@ export const register: Register = on => {
 		const turn = (to: number) => update($, page, () => to)
 		const byId = new Map(data.sessions.map(row => [row.id, row]))
 		const pending = Object.entries(queued).filter(([id]) => byId.has(id))
+
+		// The mod UI has no rule element: an empty bordered Box draws as a card, and
+		// the desktop shrinks a wide SVG line out of sight. A row of box glyphs in the
+		// queue heading's accent draws as a line everywhere. Clipped at the pane's
+		// edge it spans the full width; an engine that refuses `wrap="clip"` gets one
+		// glyph per cell, which a desktop's narrower glyphs leave a little short.
+		const divider = (await canClip($)) ? (
+			<Box width="100%" overflow="hidden">
+				<Text color="claude" wrap="clip">
+					{'─'.repeat(400)}
+				</Text>
+			</Box>
+		) : (
+			<Text color="claude" wrap="truncate-end">
+				{'─'.repeat(Math.max(1, e.props.bodyColumns ?? 80))}
+			</Text>
+		)
 
 		const pick = (row: SessionRow, value: string) =>
 			update($, queue, list => {
@@ -161,8 +196,8 @@ export const register: Register = on => {
 			})
 
 		return (
-			<Box flexDirection="column" gap={1}>
-				<Box flexDirection="row" gap={1}>
+			<Box flexDirection="column" rowGap={0.5}>
+				<Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={1}>
 					<Select
 						key="filter"
 						label="Show"
@@ -175,18 +210,16 @@ export const register: Register = on => {
 					/>
 					<Button key="refresh" label="Reload" onPress={() => void load($)} />
 				</Box>
+				{divider}
 
 				{note !== '' && <Text color="yellow">{note}</Text>}
 
-				<Box flexDirection="column">
+				<Box flexDirection="column" rowGap={0.5}>
 					{rows.length === 0 && <Text dimColor>No sessions here.</Text>}
 					{rows.map(row => (
-						<Box key={`row-${row.id}`} flexDirection="row" gap={1}>
+						<Box key={`row-${row.id}`} flexDirection="row" alignItems="center" gap={1}>
 							<Box flexGrow={1} flexDirection="column">
 								<Text>{short(row.title)}</Text>
-								{shown === 'all' && (
-									<Text dimColor>{names.get(where(row)) ?? 'No workspace'}</Text>
-								)}
 							</Box>
 							<Select
 								key={`move-${row.id}`}
@@ -213,13 +246,21 @@ export const register: Register = on => {
 					)}
 				</Box>
 
-				<Box flexDirection="column">
-					<Text bold>Queued moves: {pending.length}</Text>
+				{divider}
+
+				{/* The queue sits under its own divider; the apply step lives with it. */}
+				<Box flexDirection="column" rowGap={0.5}>
+					<Text bold color="claude">
+						Queued moves: {pending.length}
+					</Text>
 					{pending.map(([id, target]) => (
-						<Box key={`queued-${id}`} flexDirection="row" gap={1}>
-							<Text>
-								{short(byId.get(id)?.title ?? id, 40)} → {names.get(target) ?? target}
-							</Text>
+						// The title takes the free width, so every Undo lines up on the right.
+						<Box key={`queued-${id}`} flexDirection="row" alignItems="center" gap={1}>
+							<Box flexGrow={1} flexShrink={1}>
+								<Text>
+									{short(byId.get(id)?.title ?? id, 40)} → {names.get(target) ?? target}
+								</Text>
+							</Box>
 							<Button
 								key={`undo-${id}`}
 								label="Undo"
@@ -234,31 +275,46 @@ export const register: Register = on => {
 							/>
 						</Box>
 					))}
-				</Box>
 
-				{pending.length > 0 && !confirming && (
-					<Button
-						key="apply"
-						label="Apply & restart Claude"
-						onPress={() => void update($, isConfirming, () => true)}
-					/>
-				)}
-				{pending.length > 0 && confirming && (
-					<Box flexDirection="column">
-						<Text color="yellow">
-							Claude will quit, move {pending.length} session(s), and reopen. Anything running
-							in Claude stops. Backups go to ~/claude-session-backups.
-						</Text>
-						<Box flexDirection="row" gap={1}>
-							<Button key="confirm" label="Quit and move" onPress={() => void applyMoves($)} />
+					{pending.length > 0 && !confirming && (
+						<Box flexDirection="row">
 							<Button
-								key="cancel"
-								label="Cancel"
-								onPress={() => void update($, isConfirming, () => false)}
+								key="apply"
+								label="Apply & restart Claude"
+								variant="primary"
+								onPress={() => void update($, isConfirming, () => true)}
 							/>
 						</Box>
-					</Box>
-				)}
+					)}
+					{pending.length > 0 && confirming && (
+						<Box
+							flexDirection="column"
+							rowGap={0.5}
+							borderStyle="round"
+							borderColor="warning"
+							paddingX={1}
+						>
+							<Text color="warning">
+								Claude will quit, move {pending.length} session(s), and reopen. Anything running
+								in Claude stops. Backups go to ~/claude-session-backups.
+							</Text>
+							<Box flexDirection="row" gap={1}>
+								<Button
+									key="confirm"
+									label="Quit and move"
+									variant="primary"
+									onPress={() => void applyMoves($)}
+								/>
+								<Button
+									key="cancel"
+									label="Cancel"
+									variant="secondary"
+									onPress={() => void update($, isConfirming, () => false)}
+								/>
+							</Box>
+						</Box>
+					)}
+				</Box>
 			</Box>
 		)
 	})

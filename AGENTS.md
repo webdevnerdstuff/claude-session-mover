@@ -4,7 +4,7 @@ Guidance for AI agents and contributors working on this repository.
 
 ## What this is
 
-`session-mover` is a Claude Code **mod**: a plugin of function hooks (`hooks/hooks.json` names one hooks module, `hooks/register.tsx`) plus a Python helper (`bin/session_mover.py`) that does the file work. It moves Claude desktop Code sessions between sidebar workspaces. The repository is also its own marketplace (`.claude-plugin/marketplace.json`, source `./`).
+`session-mover` is a Claude Code **mod**: a plugin of function hooks (`hooks/hooks.json` names one hooks module, `hooks/register.tsx`) plus a Python helper (`bin/session_mover.py`) that does the file work. It moves Claude desktop Code sessions between sidebar environments. The repository is also its own marketplace (`.claude-plugin/marketplace.json`, source `./`).
 
 The mod API is early access. Its declarations are the authority: Claude Code lays them in `.claude-plugin/types/claude-code/index.d.ts` each time it loads the plugin from this folder (git-ignored). Grep that file for an event or noun before using it.
 
@@ -33,12 +33,12 @@ Run `pnpm check` before every commit. A type-check needs the types Claude Code l
 
 ## How a move works
 
-The desktop app keeps a session's workspace in two places, and the sidebar reads the second:
+The desktop app keeps a session's environment in two places, and the sidebar reads the second:
 
 1. The session's file, `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<id>.json`: `cwd`, `originCwd`, `gitAnchors`, `envScopeId` and `startedFromEnvironmentId`.
 2. The renderer's Local Storage (LevelDB, `Local Storage/leveldb`), key `persisted.ccd-started-environments`, `state.bySessionId[<session id>]` → environment preset id. **This is what the sidebar groups by.** A session missing from it appears to fall back to its file's `envScopeId`, then to a preset with the same folder (observed, not documented).
 
-Workspaces are the presets in `ccd-session-presets.json` with a `local` target and a `cwd`.
+Environments are the presets in `ccd-session-presets.json` with a `local` target and a `cwd`.
 
 Both are only safe to write while the app is quit (it holds LevelDB open and writes the session files back on quit). So `apply` detaches (double fork and `setsid`, so quitting Claude does not end it), quits the app by its bundle id, waits for `/Applications/Claude.app/Contents/MacOS/Claude` to exit, backs up, writes, and reopens the app. It writes `~/claude-session-backups/last-apply.json`, which the next `session.start` reports in a toast.
 
@@ -50,7 +50,7 @@ Both are only safe to write while the app is quit (it holds LevelDB open and wri
 - **Only change entries the map already has.** A new key would change the value's size, which the app keeps beside it in the origin's `META` entry. A session not in the map is moved by its file alone.
 - **Copy the conversation, never move it**: the session's `<cliSessionId>.jsonl` and folder from the old folder's project under `~/.claude/projects/` to the new one's (`/` and every other non-alphanumeric character become `-`), leaving the original.
 - **The pane has no `Select` on mobile.** It draws a note there instead.
-- **Keep one drawing under 100,000 serialized characters.** Past it the desktop keeps the old drawing and its buttons stop answering (`ui_press not handled` in `~/Library/Logs/Claude/claude.ai-web.log`). Every row repeats the workspace options, so the session list is paged to `ROWS_BUDGET`.
+- **Keep one drawing under 100,000 serialized characters.** Past it the desktop keeps the old drawing and its buttons stop answering (`ui_press not handled` in `~/Library/Logs/Claude/claude.ai-web.log`). Every row repeats the environment options, so the session list is paged to `ROWS_BUDGET`.
 
 ## Rules the mod loader enforces
 
