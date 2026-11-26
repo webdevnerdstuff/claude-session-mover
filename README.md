@@ -18,6 +18,10 @@
 
 The app has no way to change a session's environment once it is made: session-mover adds a pane where you pick the new environment for each session, then quits Claude, moves them, and reopens it.
 
+<p align="center">
+	<img alt="The Move sessions pane: a Show filter and Reload button, a list of sessions each with a Move to picker, and two queued moves with Undo buttons above Apply &amp; restart Claude" src="docs/screenshots/pane.png" width="640">
+</p>
+
 ## Why use it
 
 > [!TIP]

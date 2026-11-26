@@ -46,7 +46,7 @@ body:
         - The pane did not open or list sessions
         - Claude did not quit
         - Claude did not reopen
-        - The session is still under the old workspace
+        - The session is still under the old environment
         - The session's history is missing after the move
         - Something else
     validations:
