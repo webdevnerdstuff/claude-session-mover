@@ -80,6 +80,24 @@ async function reportLastApply($: EngineInterface) {
 	}
 }
 
+// Text's `wrap="clip"` is refused by older engines (2.1.287 among them); 2.1.330
+// is the earliest checked to take it. An engine without `session.version` is older.
+const CLIP_SINCE = [2, 1, 330]
+
+async function canClip($: EngineInterface) {
+	try {
+		const { base, version } = await $.session.version()
+		const parts = (base ?? version).split(/[.-]/).slice(0, 3).map(Number)
+		for (const [n, part] of parts.entries()) {
+			if (part !== CLIP_SINCE[n]) return part > (CLIP_SINCE[n] ?? 0)
+		}
+
+		return true
+	} catch {
+		return false
+	}
+}
+
 function short(text: string, size = 56) {
 	return text.length > size ? `${text.slice(0, size - 1)}…` : text
 }
@@ -152,15 +170,19 @@ export const register: Register = on => {
 
 		// The mod UI has no rule element: an empty bordered Box draws as a card, and
 		// the desktop shrinks a wide SVG line out of sight. A row of box glyphs in the
-		// queue heading's accent, held to one row so the glyphs past the pane's edge
-		// wrap out of sight, draws as a line everywhere. (Text's `wrap="clip"` would
-		// say this directly, but Claude 2.1.287 refuses it.)
-		const divider = (
-			<Box width="100%" height={1} overflow="hidden">
-				<Text color="claude">
+		// queue heading's accent draws as a line everywhere. Clipped at the pane's
+		// edge it spans the full width; an engine that refuses `wrap="clip"` gets one
+		// glyph per cell, which a desktop's narrower glyphs leave a little short.
+		const divider = (await canClip($)) ? (
+			<Box width="100%" overflow="hidden">
+				<Text color="claude" wrap="clip">
 					{'─'.repeat(400)}
 				</Text>
 			</Box>
+		) : (
+			<Text color="claude" wrap="truncate-end">
+				{'─'.repeat(Math.max(1, e.props.bodyColumns ?? 80))}
+			</Text>
 		)
 
 		const pick = (row: SessionRow, value: string) =>
